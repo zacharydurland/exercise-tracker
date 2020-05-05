@@ -7,45 +7,38 @@ const express = require("express");
 const mongodb = require("mongodb")
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema
+const cors = require('cors');
 const app = express();
 
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true }); 
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+.then(() => console.log("DB Connected!"))
+  .catch(err => {
+    console.log(`DB Connection Error: ${err.message}`);
+  });
 
 
 // make all the files in 'public' available
 // https://expressjs.com/en/starter/static-files.html
 app.use(express.static("public"));
 app.use(express.urlencoded())
+app.use(cors());
 
-
-
-const WorkoutSchema = new Schema({
-  description: {type:String, required:true},
-  duration: {type:String, required: false},
-  date: {type:String, required: true}
+// date default handled in /add route
+const ExerciseSchema = new Schema({
+  description: { type: String, required:true},
+  duration: { type: Number, required: false},
+  date: { type: String, required: true}
 })
-const Workout = mongoose.model("Workout",WorkoutSchema)
+const Exercise = mongoose.model("Exercise",ExerciseSchema)
 
 
 
 const UserSchema = new Schema({
-  userId: { type:String, required:true },
-  workouts: [WorkoutSchema]
+  username: { type:String, required:true},
+  exercises: [ExerciseSchema]
 })
 const User = mongoose.model("User",UserSchema)
-
-
-
-
-const createUser = (userName, res) => {
-  const newUser = new User({
-    userId: userName
-  })
-  newUser.save((err,data)=> {
-    if(err) return res.json({error: err})
-    return res.json({data: data})
-  })
-}
+User.createIndexes({unique:true})
 
 
 
@@ -55,10 +48,17 @@ app.get("/", (req, res) => {
 
 
 
-
 app.post("/api/exercise/new-user", (req, res) => {
-  const userId = req.body.userId
-  createUser(userId, res)
+  console.log('@ post /new-user',req.body)
+  const newUser = new User({
+    username: req.body.username
+  })
+  newUser.save((err,user)=> {
+    // catch unique id error
+    if(err) return res.send({success:false, message:'Username already exists'})
+    console.log('@ post /new-user output:',{username: user.username, _id: user._id})
+    res.status(200).send({username: user.username, _id: user._id})
+  })
 });
 
 
@@ -67,70 +67,80 @@ app.post("/api/exercise/new-user", (req, res) => {
 app.get("/api/exercise/users", (req, res) => {
   User.find({}, (err,data) => {
     if(err) return res.json(err)
-    res.json(data)
+    const users = data.map(user => {
+      return {username: user.username, _id: user._id}
+    })
+    console.log('@ Get /users output:', users)
+    res.send(users)
   })
 });
 
 
+
 app.get("/api/exercise/log", (req, res) => {
-  console.log(req.query)
-  const UserId = req.query.userId
+  console.log('@ /log request:', req.query)
+  const userId = req.query.userId
   let from = req.query.from
   let to = req.query.to
   const limit = req.query.limit
   
-  User.find(UserId, (err,user)=>{
+  User.find({_id: userId}, (err,user)=>{
     
-    let workouts = user[0].workouts
+    let exercises = user[0].exercises
     
     if(from && to) {
       from = new Date(from)
       to = new Date(to)
-      workouts = workouts.filter(a=>{
+      exercises = exercises.filter(a=>{
         const tempDate = new Date(a.date)
         return tempDate >= from && tempDate <= to
      })
     } else if ( from && !to) {
       from = new Date(from)
-      workouts = workouts.filter(a=>{
+      exercises = exercises.filter(a=>{
         const tempDate = new Date(a.date)
         return tempDate >= from
         })
     } else if(!from && to) {
       to = new Date(to)
-      workouts = workouts.filter(a=>{
+      exercises = exercises.filter(a=>{
         const tempDate = new Date(a.date)
         return tempDate <= to
      })
     } 
     
     if(limit) {
-      return res.send(workouts.slice(0,limit))
+      exercises = exercises.slice(0,limit)
     } 
-    
-    return res.send(workouts)
+    console.log('@ Log output: ',{user: user, workouts: exercises, count: exercises.length})
+    return res.send({username: user.username, log: exercises, count: exercises.length})
     
   })
 });
 
 
-//NEXT: validate date or return today's date
 
 
 app.post("/api/exercise/add", (req, res) => {
-  const date = req.body.date
-  User.findOne({userId: req.body.userId}, (err,data)=>{
-    if(err) return res.json(err)
-    console.log(req.body)
+  console.log("@ Add/ post:",req.body)
+  // Add-exercise form's uername field must be userId
+  User.findOne({_id: req.body.userId}, (err,data)=>{
+    if(!data){
+      return res.json({error:'User not found'})
+    }
     const update = {
       description : req.body.description,
-      duration : req.body.duration,
-      date : req.body.date ? req.body.date : new Date().toISOString().split('T')[0]
+      duration : Number.parseInt(req.body.duration),
+      date : req.body.date ? new Date(req.body.date).toDateString() : Date.now()
     }
-    data.workouts.push(update)
-    data.save(err=>{
+    data.exercises.push(update)
+    data.save((err,data)=>{
       if(err) return res.json(err)
-      return res.json({message: 'Workout Added'})
+      update.username = data.username
+      update._id = `${data._id}`
+      const output = update
+      console.log('@ /Add output:', output)
+      return res.send(output)
     })
   })
 });
