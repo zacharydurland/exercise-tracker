@@ -125,12 +125,12 @@ app.post("/api/exercise/add", (req, res) => {
     const update = {
       description : req.body.description,
       duration : req.body.duration,
-      date : req.body.date
+      date : req.body.date ? req.body.date : new Date().toISOString().split('T')[0]
     }
     data.workouts.push(update)
     data.save(err=>{
       if(err) return res.json(err)
-      console.log('Workout Saved')
+      return res.json({message: 'Workout Added'})
     })
   })
 });

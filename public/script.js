@@ -27,12 +27,13 @@ let dateField = document.getElementById("date")
 let dateError = document.getElementById("dateError")
 let dateErrorMessage = document.getElementById("dateErrorMessage")
 
-dateField.addEventListener('keyup', (e)=>{
+dateField.addEventListener('change', (e)=>{
   let date = e.target.value
-  console.log(isValidDate(date))
-  if (!isValidDate(date)) {
+  if (!isValidDate(date) && date != '') {
     dateError.classList.remove('hidden')
   } else {
     dateError.classList.add('hidden')
   }
 })
+
+
