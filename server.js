@@ -72,10 +72,53 @@ app.get("/api/exercise/users", (req, res) => {
 });
 
 
+app.get("/api/exercise/log", (req, res) => {
+  console.log(req.query)
+  const UserId = req.query.userId
+  let from = req.query.from
+  let to = req.query.to
+  const limit = req.query.limit
+  
+  User.find(UserId, (err,user)=>{
+    
+    let workouts = user[0].workouts
+    
+    if(from && to) {
+      from = new Date(from)
+      to = new Date(to)
+      workouts = workouts.filter(a=>{
+        const tempDate = new Date(a.date)
+        return tempDate >= from && tempDate <= to
+     })
+    } else if ( from && !to) {
+      from = new Date(from)
+      workouts = workouts.filter(a=>{
+        const tempDate = new Date(a.date)
+        return tempDate >= from
+        })
+    } else if(!from && to) {
+      to = new Date(to)
+      workouts = workouts.filter(a=>{
+        const tempDate = new Date(a.date)
+        return tempDate <= to
+     })
+    } 
+    
+    if(limit) {
+      return res.send(workouts.slice(0,limit))
+    } 
+    
+    return res.send(workouts)
+    
+  })
+});
+
+
 //NEXT: validate date or return today's date
 
 
 app.post("/api/exercise/add", (req, res) => {
+  const date = req.body.date
   User.findOne({userId: req.body.userId}, (err,data)=>{
     if(err) return res.json(err)
     console.log(req.body)
@@ -86,7 +129,8 @@ app.post("/api/exercise/add", (req, res) => {
     }
     data.workouts.push(update)
     data.save(err=>{
-      console.log(err)
+      if(err) return res.json(err)
+      console.log('Workout Saved')
     })
   })
 });

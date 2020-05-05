@@ -70,9 +70,13 @@
                   </label>
                   <label>
                     <div class="ui input fluid">
-                      <input name="date" type="text" maxlength="100"
+                      <input id="date" name="date" type="text" maxlength="100"
                              placeholder="Workout Date (yyyy-mm-dd)">
                     </div>
+                    <div id="dateError" class="hidden ui error message">
+                        <div class="header">Error</div>
+                        <p id="dateErrorMessage">Workout Date should be the format "YYYY-MM-DD"</p>
+                      </div>
                   </label>
                   <br>
                   <button class="ui fluid primary button" type="submit">Add Workout</button>
