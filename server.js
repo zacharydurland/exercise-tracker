@@ -23,6 +23,9 @@ app.use(express.static("public"));
 app.use(express.urlencoded())
 app.use(cors());
 
+
+
+
 // date default handled in /add route
 const ExerciseSchema = new Schema({
   description: { type: String, required:true},
@@ -54,7 +57,6 @@ app.post("/api/exercise/new-user", (req, res) => {
     username: req.body.username
   })
   newUser.save((err,user)=> {
-    // catch unique id error
     if(err) return res.send({success:false, message:'Username already exists'})
     console.log('@ post /new-user output:',{username: user.username, _id: user._id})
     res.status(200).send({username: user.username, _id: user._id})
@@ -123,8 +125,7 @@ app.get("/api/exercise/log", (req, res) => {
 
 app.post("/api/exercise/add", (req, res) => {
   console.log("@ Add/ post:",req.body)
-  // Add-exercise form's uername field must be userId
-  User.findOne({_id: req.body.userId}, (err,data)=>{
+  User.findOne({username: req.body.username}, (err,data)=>{
     if(!data){
       return res.json({error:'User not found'})
     }
@@ -151,4 +152,7 @@ app.post("/api/exercise/add", (req, res) => {
 
 const listener = app.listen(process.env.PORT, () => {
   console.log("Your app is listening on port " + listener.address().port);
+  
+  
+  
 });
